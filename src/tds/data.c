@@ -928,7 +928,7 @@ tds_generic_put(TDSSOCKET * tds, TDSCOLUMN * curcol, int bcp7)
 	CHECK_TDS_EXTRA(tds);
 	CHECK_COLUMN_EXTRA(curcol);
 
-	tdsdump_log(TDS_DBG_INFO1, "tds_generic_put: colsize = %d\n", (int) curcol->column_cur_size);
+	tdsdump_log(TDS_DBG_INFO1, "tds_generic_put: %s colsize = %d varint_size = %d\n", tds_dstr_cstr(&curcol->column_name), (int) curcol->column_cur_size, (int) curcol->column_varint_size);
 
 	/* output NULL data */
 	if (curcol->column_cur_size < 0) {
