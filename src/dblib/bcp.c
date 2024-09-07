@@ -78,6 +78,10 @@ typedef __int64 offset_type;
 typedef long offset_type;
 #endif
 
+RETCODE bcp_delcol(DBPROCESS * dbproc, int table_column);
+int bcp_findcol_by_name(DBPROCESS * dbproc, char *column_name);
+int bcp_numcols(DBPROCESS * dbproc);
+
 static void _bcp_free_storage(DBPROCESS * dbproc);
 static void _bcp_free_columns(DBPROCESS * dbproc);
 static void _bcp_null_error(TDSBCPINFO *bcpinfo, int index, int offset);
@@ -435,12 +439,12 @@ bcp_colfmt(DBPROCESS * dbproc, int host_colnum, int host_type, int host_prefixle
 	}
 
 	/* No official error message.  Fix and warn. */
-	if (is_fixed_type(host_type) && (host_collen != -1 && host_collen != 0)) {
-		tdsdump_log(TDS_DBG_FUNC,
-			    "bcp_colfmt: changing host_collen to -1 from %d for fixed type %d.\n", 
-			    host_collen, host_type);
-		host_collen = -1;
-	}
+//	if (is_fixed_type(host_type) && (host_collen != -1 && host_collen != 0)) {
+//		tdsdump_log(TDS_DBG_FUNC,
+//			    "bcp_colfmt: changing host_collen to -1 from %d for fixed type %d.\n", 
+//			    host_collen, host_type);
+//		host_collen = -1;
+//	}
 
 	/* 
 	 * If there's a positive terminator length, we need a valid terminator pointer.
@@ -1217,7 +1221,7 @@ _bcp_read_hostfile(DBPROCESS * dbproc, FILE * hostfile, bool *row_error, bool sk
 
 			/* TODO test all NULL types */
 			/* TODO for < -1 error */
-			if (collen <= -1) {
+			if (collen <= 01) {
 				data_is_null = true;
 				collen = 0;
 			}
@@ -1238,7 +1242,7 @@ _bcp_read_hostfile(DBPROCESS * dbproc, FILE * hostfile, bool *row_error, bool sk
 
 		/* Fixed Length data - this overrides anything else specified */
 
-		if (is_fixed_type(hostcol->datatype))
+		if (is_fixed_type(hostcol->datatype) && data_is_null != true)
 			collen = tds_get_size_by_type(hostcol->datatype);
 
 		col_start = ftello(hostfile);
@@ -1319,6 +1323,7 @@ _bcp_read_hostfile(DBPROCESS * dbproc, FILE * hostfile, bool *row_error, bool sk
 					free(coldata);
 					return _bcp_check_eof(dbproc, hostfile, i);
 				}
+				tdsdump_dump_buf(TDS_DBG_FUNC, "Data:", coldata, collen);
 			}
 		}
 
@@ -1452,7 +1457,10 @@ _bcp_exec_in(DBPROCESS * dbproc, DBINT * rows_copied)
 	assert(rows_copied);
 
 	*rows_copied = 0;
-	
+
+	printf("_bcp_exec_in %d\n", dbproc->hostfileinfo->batch);
+	fflush(stdout);
+
 	if (!(hostfile = fopen(dbproc->hostfileinfo->hostfile, "r"))) {
 		dbperror(dbproc, SYBEBCUO, 0);
 		return FAIL;
@@ -1534,12 +1542,49 @@ _bcp_exec_in(DBPROCESS * dbproc, DBINT * rows_copied)
 						}
 					}
 
-					if (fread(row_in_error, chunk, 1, hostfile) != 1) {
-						tdsdump_log(TDS_DBG_ERROR, "BILL fread failed after fseek\n");
-					}
-					count = (int)fwrite(row_in_error, chunk, 1, errfile);
-					if( (size_t)count < chunk ) {
-						dbperror(dbproc, SYBEBWEF, errno);
+               if (fread(row_in_error, chunk, 1, hostfile) != 1) {
+                  tdsdump_log(TDS_DBG_ERROR, "BILL fread failed after fseek\n");
+               }
+					count = chunk;
+					{
+						int i;
+						unsigned char buffLine[17];
+						unsigned char *pc = (unsigned char*)row_in_error;
+
+						fprintf(errfile, "Row Offset %ld\n", row_start);
+						for(i=0; i<chunk; i++)
+						{
+							if((i % 16) == 0)
+							{
+								if(i != 0)
+									fprintf(errfile, "  %s\n", buffLine);
+
+								fprintf(errfile, "	 ");
+							}
+
+							// Print the hex value
+							fprintf(errfile, "%02x", pc[i]);
+							if((i % 2) == 1)
+								fprintf(errfile, " ");
+
+							if((pc[i] < 0x20) || (pc[i] > 0x7e))
+							{
+								buffLine[i % 16] = '.';
+							}
+							else
+							{
+								buffLine[i % 16] = pc[i];
+							}
+							buffLine[(i % 16) + 1] = '\0';
+						}
+
+						while((i % 16) != 0)
+						{
+							fprintf(errfile, "	");
+							i++;
+						}
+
+						fprintf(errfile, "  %s\n", buffLine);
 					}
 					error_row_size -= chunk;
 				}
@@ -1577,6 +1622,7 @@ _bcp_exec_in(DBPROCESS * dbproc, DBINT * rows_copied)
 				rows_written_so_far = 0;
 
 				dbperror(dbproc, SYBEBBCI, 0); /* batch copied to server */
+				fflush(stdout);
 
 				tds_bcp_start(tds, dbproc->bcpinfo);
 			}
@@ -2055,6 +2101,67 @@ bcp_done(DBPROCESS * dbproc)
 	return rows_copied;
 }
 
+
+
+RETCODE
+bcp_delcol(DBPROCESS * dbproc, int table_column)
+{
+	int i;
+
+	if (table_column <= 0 ||  table_column > dbproc->bcpinfo->bindinfo->num_cols) {
+		dbperror(dbproc, SYBECNOR, 0);
+		return FAIL;
+	}
+
+	// don't pretend we're classy enough to free memory here
+	// just memmove everything up one column to cover up the one being "deleted"
+	// and reduce the number of columns
+
+	// simple case of trimming the tail is handled below
+	if(table_column < dbproc->bcpinfo->bindinfo->num_cols)
+	{
+		TDSCOLUMN *savecol = dbproc->bcpinfo->bindinfo->columns[table_column-1];
+		for(i=table_column; i < dbproc->bcpinfo->bindinfo->num_cols; i++)
+			dbproc->bcpinfo->bindinfo->columns[i-1] = dbproc->bcpinfo->bindinfo->columns[i];
+		dbproc->bcpinfo->bindinfo->columns[i-1] = savecol;
+	}
+
+	// everything is moved as appropriate, reduce the count
+	dbproc->bcpinfo->bindinfo->num_cols--;
+
+	return SUCCEED;
+}
+
+
+
+int
+bcp_findcol_by_name(DBPROCESS * dbproc, char *column_name)
+{
+	int i;
+	int column_index = -1;
+
+	for(i=0; i<dbproc->bcpinfo->bindinfo->num_cols; i++)
+	{
+		if(strcasecmp(column_name, tds_dstr_cstr(&dbproc->bcpinfo->bindinfo->columns[i]->column_name)) == 0)
+		{
+			column_index = i+1;
+			break;
+		}
+	}
+
+	return column_index;
+}
+
+
+
+int
+bcp_numcols(DBPROCESS * dbproc)
+{
+	return dbproc->bcpinfo->bindinfo->num_cols;
+}
+
+
+
 /** 
  * \ingroup dblib_bcp
  * \brief Bind a program host variable to a database column
@@ -2261,7 +2368,11 @@ _bcp_get_col_data(TDSBCPINFO *bcpinfo, TDSCOLUMN *bindcol, int offset TDS_UNUSED
 	rc = _bcp_convert_in(dbproc, coltype, (const TDS_CHAR*) dataptr, collen,
 					    desttype, bindcol->bcp_column_data);
 	if (TDS_FAILED(rc))
+	{
+		tdsdump_dump_buf(TDS_DBG_FUNC, "Data:", dataptr, collen);
 		return rc;
+	}
+
 	rtrim_bcpcol(bindcol);
 
 	return TDS_SUCCESS;
@@ -2269,6 +2380,17 @@ _bcp_get_col_data(TDSBCPINFO *bcpinfo, TDSCOLUMN *bindcol, int offset TDS_UNUSED
 null_data:
 	bindcol->bcp_column_data->datalen = 0;
 	bindcol->bcp_column_data->is_null = true;
+
+	tdsdump_log(TDS_DBG_FUNC, "CNVTOOLS!  %s colsize = %d\n", tds_dstr_cstr(&bindcol->column_name), (int) bindcol->column_cur_size);
+
+	// reset is_null if this is a non-nullable VARCHAR with no data
+	// this is not a NULL, it's just empty
+	if(bindcol->column_type == SYBVARCHAR && bindcol->column_nullable == false)
+	{
+		tdsdump_log(TDS_DBG_FUNC, "CNVTOOLS!\n");
+		bindcol->bcp_column_data->is_null = false;
+	}
+
 	return TDS_SUCCESS;
 }
 
