@@ -34,10 +34,10 @@ typedef struct pd
 	char *formatfile;
 	char *errorfile;
 	char *interfacesfile;
-	int firstrow;
-	int lastrow;
-	int batchsize;
-	int maxerrors;
+	DBINT firstrow;
+	DBINT lastrow;
+	DBINT batchsize;
+	DBINT maxerrors;
 	int textsize;
 	char *fieldterm;
 	int fieldtermlen;
