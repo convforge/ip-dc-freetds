@@ -671,6 +671,7 @@ file_formatted(BCPPARAMDATA * pdata, DBPROCESS * dbproc, DBINT dir)
 	bcp_control(dbproc, BCPFIRST, pdata->firstrow);
 	bcp_control(dbproc, BCPLAST, pdata->lastrow);
 	bcp_control(dbproc, BCPMAXERRS, pdata->maxerrors);
+	bcp_control(dbproc, BCPBATCH, pdata->batchsize);
 
 	if (FAIL == bcp_readfmt(dbproc, pdata->formatfile))
 		return FALSE;
