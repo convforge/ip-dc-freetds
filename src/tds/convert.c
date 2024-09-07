@@ -150,6 +150,7 @@ static int store_monthname(const char *, struct tds_time *);
 static int store_numeric_date(const char *, struct tds_time *);
 static int store_mday(const char *, struct tds_time *);
 static int store_year(int, struct tds_time *);
+static int store_4digit_year(int, struct tds_time *);
 
 /* static int days_this_year (int years); */
 static bool is_timeformat(const char *);
@@ -2073,7 +2074,7 @@ string_to_datetime(const char *instr, TDS_UINT len, int desttype, CONV_RESULT * 
 					/* ONLY be the year part of an alphabetic date */
 
 				case 4:
-					store_year(atoi(tok), &t);
+					store_4digit_year(atoi(tok), &t);
 					yeardone++;
 					current_state = DOING_ALPHABETIC_DATE;
 					break;
@@ -2145,7 +2146,7 @@ string_to_datetime(const char *instr, TDS_UINT len, int desttype, CONV_RESULT * 
 				else
 					switch (strlen(tok)) {
 					case 4:
-						store_year(atoi(tok), &t);
+						store_4digit_year(atoi(tok), &t);
 						yeardone++;
 						if (monthdone && yeardone && mdaydone)
 							current_state = GOING_IN_BLIND;
@@ -2205,7 +2206,10 @@ string_to_datetime(const char *instr, TDS_UINT len, int desttype, CONV_RESULT * 
 				case 2:
 					store_mday(last_token, &t);
 					mdaydone++;
-					store_year(atoi(tok), &t);
+					if(strlen(tok) == 4)
+						store_4digit_year(atoi(tok), &t);
+					else
+						store_year(atoi(tok), &t);
 					yeardone++;
 
 					if (monthdone && yeardone && mdaydone)
@@ -2607,6 +2611,21 @@ store_year(int year, struct tds_time *t)
 }
 
 static int
+store_4digit_year(int year, struct tds_time *t)
+{
+	if (year < 0)
+		return 0;
+
+	if (year <= 9999) {
+		t->tm_year = year - 1900;
+		return (1);
+	}
+
+	return (0);
+}
+
+
+static int
 store_mday(const char *datestr, struct tds_time *t)
 {
 	int mday = atoi(datestr);
@@ -2629,6 +2648,7 @@ store_numeric_date(const char *datestr, struct tds_time *t)
 	char last_char = 0;
 	const char *s;
 	int month = 0, year = 0, mday = 0;
+	int year_digits = 0;
 
 	/* Its YYYY-MM-DD format */
 
@@ -2655,8 +2675,10 @@ store_numeric_date(const char *datestr, struct tds_time *t)
 				month = (month * 10) + (*s - '0');
 			if (state == TDS_DAY)
 				mday = (mday * 10) + (*s - '0');
-			if (state == TDS_YEAR)
+			if (state == TDS_YEAR) {
 				year = (year * 10) + (*s - '0');
+				year_digits++;
+			}
 		}
 		last_char = *s;
 	}
@@ -2670,7 +2692,10 @@ store_numeric_date(const char *datestr, struct tds_time *t)
 	else
 		return 0;
 
-	return store_year(year, t);
+	if(year_digits == 4)
+		return store_i4digit_year(year, t);
+	else
+		return store_year(year, t);
 
 }
 
@@ -2703,7 +2728,10 @@ store_dd_mon_yyy_date(char *datestr, struct tds_time *t)
 		year = atoi(&datestr[7]);
 		tdsdump_log(TDS_DBG_INFO1, "store_dd_mon_yyy_date: year %d\n", year);
 
-		return store_year(year, t);
+		if(strlen(&datestr[7]) == 4)
+			return store_4digit_year(year, t);
+		else
+			return store_year(year, t);
 	} else {
 		strlcpy(mon, &datestr[2], 4);
 
@@ -2715,7 +2743,10 @@ store_dd_mon_yyy_date(char *datestr, struct tds_time *t)
 		year = atoi(&datestr[5]);
 		tdsdump_log(TDS_DBG_INFO1, "store_dd_mon_yyy_date: year %d\n", year);
 
-		return store_year(year, t);
+		if(strlen(&datestr[5]) == 4)
+			return store_4digit_year(year, t);
+		else
+			return store_year(year, t);
 	}
 
 }
@@ -2812,7 +2843,10 @@ store_yymmdd_date(const char *datestr, struct tds_time *t)
 	else
 		return 0;
 
-	return (store_year(year, t));
+	if(strlen(datestr) > 6)
+		return (store_4digit_year(year, t));
+	else
+		return (store_year(year, t));
 
 }
 
