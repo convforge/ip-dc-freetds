@@ -47,3 +47,4 @@ test-driver
 missing
 .gradle
 !gradlew
+win32
