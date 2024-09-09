@@ -1,0 +1,31 @@
+plugins {
+    id 'cpp-library'
+    id 'cpp-unit-test'
+    id 'maven-publish'
+    id ("com.netflix.nebula.rpm") version "11.9.1"
+    id "org.ysb33r.doxygen" version "1.0.3"
+}
+
+group = 'com.gwt.conversion'
+version = '1.0.0'
+
+ext {
+    sources = fileTree(dir: ".", includes: [ "dblib.c", "dbutil.c", "rpc.c", "bcp.c", "xact.c", "dbpivot.c", "dbopen.c", "winmain.c" ])
+    publicIncludes = "."
+    rpmLibraries = fileTree(dir: 'build/lib/main/release', include: "*.so")
+    rpmIncludes = fileTree(dir: ".", include: "*.h")
+    doxygenSources = fileTree(dir: ".", includes: [ '*.c', '*.h'])
+}
+
+apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.library"
+
+tasks.withType(Rpm).configureEach {
+    requires('conversion-preinstall')
+}
+
+tasks.withType(CppCompile).configureEach {
+    compilerArgs.add "-DFREETDS_TOPDIR=../../src"
+    includes {
+        "../../include"
+    }
+}
