@@ -45,3 +45,5 @@ test-driver
 *.gcno
 *.gcda
 missing
+.gradle
+!gradlew
