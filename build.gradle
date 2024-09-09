@@ -1,9 +1,10 @@
 plugins {
+    id 'maven-publish'
     id ("com.netflix.nebula.rpm") version "11.9.1"
 }
 
 group = 'com.gwt.conversion'
-version = '6.0.0'
+version = '1.0.0'
 
 ext {
     rpmIncludes = fileTree(dir: 'include', includes: [ 'sybdb.h', 'sybfront.h' ])
@@ -35,3 +36,16 @@ tasks.withType(Rpm).configureEach {
     requires('conversion-preinstall')
 }
 
+task packageDistribution(type: Zip) {
+    from rpmIncludes
+    archiveFileName  = 'freetds-1.0.0-cpp-api-headers.zip'
+    destinationDirectory = file("$buildDir/dist")
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact packageDistribution
+        }
+    }
+}
