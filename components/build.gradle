@@ -34,8 +34,8 @@ task make(type:Exec) {
 tasks.withType(Rpm).configureEach {
     dependsOn make
     requires('conversion-preinstall')
-    user conv
-    group conv
+    user 'conv'
+    group 'conv'
 }
 
 task packageDistribution(type: Zip) {
