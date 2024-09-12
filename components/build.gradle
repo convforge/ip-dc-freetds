@@ -32,7 +32,6 @@ task make(type:Exec) {
 }
 
 tasks.withType(Rpm).configureEach {
-    dependsOn make
     requires('conversion-preinstall')
     user 'conv'
     group 'conv'
