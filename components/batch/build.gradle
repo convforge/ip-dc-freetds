@@ -3,7 +3,7 @@ plugins {
     id ("com.netflix.nebula.rpm") version "11.9.1"
 }
 
-group = 'com.gwt.conversion'
+group = 'com.gwt.ipdc'
 version = '4.0.0'
 
 ext {
@@ -18,7 +18,7 @@ apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.rpm"
 
 task make(type:Exec) {
   workingDir '.'
-
+  
   commandLine 'make', 'clean', 'all'
 
   //store the output instead of printing to the console:
@@ -33,6 +33,7 @@ task make(type:Exec) {
 
 tasks.withType(Rpm).configureEach {
     requires('conversion-preinstall')
+    release 'ipdc'
     user 'conv'
     group 'conv'
 }
