@@ -16,7 +16,27 @@ ext {
 
 apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.rpm"
 
+task autoconf(type:Exec) {
+  workingDir '.'
+  commandLine 'sh', 'autogen.sh'
+  standardOutput = new ByteArrayOutputStream()
+  ext.output = {
+    return standardOutput.toString()
+  }
+}
+
+task configure(type:Exec) {
+  dependsOn 'autoconf'
+  workingDir '.'
+  commandLine './configure', '--prefix=/opt/conv'
+  standardOutput = new ByteArrayOutputStream()
+  ext.output = {
+    return standardOutput.toString()
+  }
+}
+
 task make(type:Exec) {
+  dependsOn 'configure'
   workingDir '.'
   
   commandLine 'make', 'clean', 'all'
@@ -32,7 +52,7 @@ task make(type:Exec) {
 }
 
 tasks.withType(Rpm).configureEach {
-    requires('conversion-preinstall')
+    requires('ip-dc-conversion-preinstall')
     release 'ipdc'
     user 'conv'
     group 'conv'

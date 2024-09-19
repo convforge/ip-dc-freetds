@@ -1,1 +1,1 @@
-#define FREETDS_SYSCONFDIR "/usr/local/etc"
+#define FREETDS_SYSCONFDIR "/opt/conv/etc"
