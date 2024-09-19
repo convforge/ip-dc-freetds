@@ -3,7 +3,7 @@ plugins {
     id ("com.netflix.nebula.rpm") version "11.9.1"
 }
 
-group = 'com.gwt.conversion'
+group = 'com.gwt.ipdc'
 version = '1.0.0'
 
 ext {
@@ -16,36 +16,36 @@ ext {
 
 apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.rpm"
 
-task make(type:Exec) {
+task autoconf(type:Exec) {
   workingDir '.'
-
-  commandLine 'make', 'clean', 'all'
-
-  //store the output instead of printing to the console:
+  commandLine 'sh', 'autogen.sh'
   standardOutput = new ByteArrayOutputStream()
-
-  //extension method stopTomcat.output() can be used to obtain the output:
   ext.output = {
     return standardOutput.toString()
   }
+}
 
+task configure(type:Exec) {
+    dependsOn 'autoconf'
+    workingDir '.'
+    commandLine './configure', '--prefix=/opt/conv'
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString()
+    }
+}
+
+task make(type:Exec) {
+    dependsOn 'configure'
+    workingDir '.'
+    commandLine 'make', 'clean', 'all'
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString()
+    }
 }
 
 tasks.withType(Rpm).configureEach {
     dependsOn make
-    requires('conversion-preinstall')
-}
-
-task packageDistribution(type: Zip) {
-    from rpmIncludes
-    archiveFileName  = 'freetds-1.0.0-cpp-api-headers.zip'
-    destinationDirectory = file("$buildDir/dist")
-}
-
-publishing {
-    publications {
-        maven(MavenPublication) {
-            artifact packageDistribution
-        }
-    }
+    requires('ip-dc-conversion-preinstall')
 }
