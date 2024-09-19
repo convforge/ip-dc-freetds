@@ -1,0 +1,33 @@
+plugins {
+    id 'maven-publish'
+    id ("com.netflix.nebula.rpm") version "11.9.1"
+}
+
+group = 'com.gwt.conversion'
+version = '1.0.0c' // TODO reversion based on TDS version
+
+ext {
+    rpmLibraries = fileTree(dir: 'build/lib/main/release', include: "*.so")
+    rpmIncludes = fileTree(dir: ".", include: "*.h")
+}
+
+apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.rpm"
+
+tasks.withType(Rpm).configureEach {
+    requires('conversion-preinstall')
+}
+
+task make(type:Exec) {
+  workingDir '.'
+
+  commandLine 'make', 'clean', 'all'
+
+  //store the output instead of printing to the console:
+  standardOutput = new ByteArrayOutputStream()
+
+  //extension method stopTomcat.output() can be used to obtain the output:
+  ext.output = {
+    return standardOutput.toString()
+  }
+
+}

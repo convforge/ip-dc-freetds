@@ -20,7 +20,7 @@
 #ifndef _tdsguard_fWmaUBUxPCWj6BPyET5377_
 #define _tdsguard_fWmaUBUxPCWj6BPyET5377_
 
-/* $Id: c69b1270e9bbde50d3708cbfbf8921f8e849c928 $ */
+/* $Id$ */
 
 #define TDS_VERSION_NO "@PACKAGE@ v@VERSION@"
 
