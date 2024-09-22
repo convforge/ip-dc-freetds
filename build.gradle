@@ -7,7 +7,9 @@ group = 'com.gwt.ipdc'
 version = '4.0.0'
 
 ext {
-    rpmIncludes = fileTree(dir: 'include', includes: [ 'sybdb.h', 'sybfront.h' ])
+    rpmIncludes = [
+        fileTree(dir: 'include', includes: [ '**/*.h' ]),
+    ]
     rpmLibraries = [
         fileTree(dir: "src/ctlib/.libs", include: "libct*"),
         fileTree(dir: "src/dblib/.libs", include: "libsybdb*")
