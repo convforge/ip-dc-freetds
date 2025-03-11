@@ -16,7 +16,7 @@ ext {
     ]
 }
 
-apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.rpm"
+apply from: "${System.getenv('CONV_ETC')}/build/gradle/cpp.build.gradle"
 
 task autoconf(type:Exec) {
   workingDir '.'

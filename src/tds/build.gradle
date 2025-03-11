@@ -11,7 +11,7 @@ ext {
     rpmIncludes = fileTree(dir: ".", include: "*.h")
 }
 
-apply from: "${System.getenv('CONV_ETC')}/build/gradle/build.gradle.rpm"
+apply from: "${System.getenv('CONV_ETC')}/build/gradle/cpp.build.gradle"
 
 tasks.withType(Rpm).configureEach {
     requires('conversion-preinstall')
